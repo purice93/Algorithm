@@ -5,10 +5,9 @@
 @description: 
 """
 
+import math
 import random
 import time
-
-import math
 
 people = [('Seymour', 'BOS'),
           ('Franny', 'DAL'),
@@ -81,7 +80,7 @@ def schedulecost(sol):
     return totalcost + totalWait
 
 
-print("默认初始化值：",schedulecost(s))
+print("默认初始化值：", schedulecost(s))
 
 domain = [(0, 9)] * (len(people) * 2)
 
@@ -99,14 +98,16 @@ def randomoptimize(domain, costf):
             # bestRs = best
     return r, best
 
-r, best = randomoptimize(domain,schedulecost)
-print("随机法：",best)
+
+r, best = randomoptimize(domain, schedulecost)
+print("随机法：", best)
+
 
 # 2、爬山法
 # 对于每一个未知数，搜索维度方向上的邻近节点，取最小值，直到最小值不变，退出
-def hillClimb(domain,costf):
+def hillClimb(domain, costf):
     # 创建随机解-初始化
-    sol = [random.randint(domain[i][0],domain[i][1]) for i in range(len(domain))]
+    sol = [random.randint(domain[i][0], domain[i][1]) for i in range(len(domain))]
 
     # 循环
     while 1:
@@ -114,83 +115,86 @@ def hillClimb(domain,costf):
         neighbors = []
         # 这里面的邻接区并不完全对，应该再加上一个维度循环，即单独固定一个变量变化
         for j in range(len(domain)):
-            if sol[j]>domain[j][0]:
-                neighbors.append(sol[0:j]+[sol[j]-1]+sol[j+1:])
-            if sol[j]<domain[j][1]:
-                neighbors.append(sol[0:j]+[sol[j]+1]+sol[j+1:])
+            if sol[j] > domain[j][0]:
+                neighbors.append(sol[0:j] + [sol[j] - 1] + sol[j + 1:])
+            if sol[j] < domain[j][1]:
+                neighbors.append(sol[0:j] + [sol[j] + 1] + sol[j + 1:])
 
         # 比较当前值和邻接值
         current = costf(sol)
         best = current
         for j in range(len(neighbors)):
             cost = costf(neighbors[j])
-            if best>cost:
-                best=cost
+            if best > cost:
+                best = cost
                 sol = neighbors[j]
 
         # 整个邻接区都没有更好的，则终止循环
-        if best==current:
+        if best == current:
             break;
 
-    return sol,best
-sol,best = hillClimb(domain,schedulecost)
-print("爬山法：",best)
+    return sol, best
+
+
+sol, best = hillClimb(domain, schedulecost)
+print("爬山法：", best)
 
 
 # 3、模拟退火
 # 原理相对于爬山法，为了避免陷入局部最小值，在初期的时候，对于不符合的结果，暂时不排除
 
 # T:初始温度，cool:冷却因子，step方向步长
-def annealingoptimize(domain,costf,T=10000,cool=0.95,step=1):
+def annealingoptimize(domain, costf, T=10000, cool=0.95, step=1):
     # 初始化随机值
-    vec = [random.randint(domain[i][0],domain[i][1]) for i in range(len(domain))]
+    vec = [random.randint(domain[i][0], domain[i][1]) for i in range(len(domain))]
     while T > 0.1:
         # 随机选择一个方向
-        i = random.randint(0,len(domain)-1)
-        director = random.randint(-step,step)
+        i = random.randint(0, len(domain) - 1)
+        director = random.randint(-step, step)
         vecb = vec[:]
-        vecb[i]+=director # 偏移
+        vecb[i] += director  # 偏移
 
         # 防止出界
-        if vecb[i]<domain[i][0]:
-            vecb[i]=domain[i][0]
-        elif vecb[i]>domain[i][1]:
-            vecb[i]=domain[i][1]
+        if vecb[i] < domain[i][0]:
+            vecb[i] = domain[i][0]
+        elif vecb[i] > domain[i][1]:
+            vecb[i] = domain[i][1]
 
         costCur = costf(vec)
         costB = costf(vecb)
 
-
-        if (costB<costCur or random.random()<pow(math.e,-(costB-costCur)/T)):
-            vec = vecb # 即便costB>costCur,也不用保留之前的vec，因为，温度下降后，会再返回到当前值
+        if (costB < costCur or random.random() < pow(math.e, -(costB - costCur) / T)):
+            vec = vecb  # 即便costB>costCur,也不用保留之前的vec，因为，温度下降后，会再返回到当前值
 
         # 降低温度
         T = T * cool
-    return vec,costf(vec)
+    return vec, costf(vec)
 
-sol,best = annealingoptimize(domain,schedulecost)
-print("模拟退火算法：",best)
+
+sol, best = annealingoptimize(domain, schedulecost)
+print("模拟退火算法：", best)
+
 
 # 4、遗传算法
-def geneticoptimize(domain,costf,popsize=50,step=1,mutprob=0.2,elite=0.2,mixiter=100):
+def geneticoptimize(domain, costf, popsize=50, step=1, mutprob=0.2, elite=0.2, mixiter=100):
     # 变异
     def mutate(vec):
-        i = random.randint(0,len(domain)-1)
+        i = random.randint(0, len(domain) - 1)
         # 随机数什么用？
-        if random.random()<0.5 and vec[i]>domain[i][0]:
-            return vec[:i]+[vec[i]-step]+vec[i+1:]
-        elif vec[i]<domain[i][1]:
-            return vec[:i]+[vec[i]+step]+vec[i+1:]
+        if random.random() < 0.5 and vec[i] > domain[i][0]:
+            return vec[:i] + [vec[i] - step] + vec[i + 1:]
+        elif vec[i] < domain[i][1]:
+            return vec[:i] + [vec[i] + step] + vec[i + 1:]
 
     # 重组
-    def crossover(vec1,vec2):
-        i = random.randint(1,len(domain)-2)
-        return vec1[:i]+vec2[i:]
+    def crossover(vec1, vec2):
+        i = random.randint(1, len(domain) - 2)
+        return vec1[:i] + vec2[i:]
 
     # 初始化种群
     pop = []
     for i in range(popsize):
-        vec = [random.randint(domain[j][0],domain[j][1]) for j in range(len(domain))]
+        vec = [random.randint(domain[j][0], domain[j][1]) for j in range(len(domain))]
         pop.append(vec)
 
     toplite = int(popsize * elite)
@@ -198,21 +202,23 @@ def geneticoptimize(domain,costf,popsize=50,step=1,mutprob=0.2,elite=0.2,mixiter
     for i in range(mixiter):
 
         # 排序，进行物种进化选择
-        scores = [(costf(v),v) for v in pop]
+        scores = [(costf(v), v) for v in pop]
         scores.sort()
-        ranked = [v for (s,v) in scores]
+        ranked = [v for (s, v) in scores]
 
         pop = ranked[:toplite]
-        while len(pop)<popsize:
-            if random.random()<mutprob:
-                c = random.randint(0,toplite)
+        while len(pop) < popsize:
+            if random.random() < mutprob:
+                c = random.randint(0, toplite)
                 pop.append(mutate(ranked[c]))
             else:
-                c1 = random.randint(0,toplite)
-                c2 = random.randint(0,toplite)
-                pop.append(crossover(ranked[c1],ranked[c2]))
+                c1 = random.randint(0, toplite)
+                c2 = random.randint(0, toplite)
+                pop.append(crossover(ranked[c1], ranked[c2]))
         print(scores[0][0])
-    return scores[0][1],scores[0][0]
+    return scores[0][1], scores[0][0]
+
 
 sol, best = geneticoptimize(domain, schedulecost)
-print("遗传算法：",best)
+print("遗传算法：", best)
+
